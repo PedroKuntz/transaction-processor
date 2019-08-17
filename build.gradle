@@ -1,0 +1,81 @@
+import com.amazonaws.services.lambda.model.InvocationType
+import jp.classmethod.aws.gradle.lambda.AWSLambdaInvokeTask
+import jp.classmethod.aws.gradle.lambda.AWSLambdaMigrateFunctionTask
+
+buildscript {
+    ext.kotlin_version = '1.3.41'
+
+    repositories {
+        mavenCentral()
+        maven {
+            url "https://plugins.gradle.org/m2/"
+        }
+    }
+    dependencies {
+        classpath 'com.github.jengelman.gradle.plugins:shadow:2.0.4'
+        classpath "org.jetbrains.kotlin:kotlin-gradle-plugin:$kotlin_version"
+        classpath "jp.classmethod.aws:gradle-aws-plugin:0.30"
+    }
+}
+
+plugins {
+    id 'org.jetbrains.kotlin.jvm' version '1.3.41'
+}
+
+group 'com.itau.cartaobranco'
+version '1.0'
+
+apply plugin: 'com.github.johnrengelman.shadow' // To create a fatjar which can be uploaded to AWS
+//apply plugin: 'jp.classmethod.aws'              // Gradle tasks for AWS stuff
+//apply plugin: 'jp.classmethod.aws.lambda'       // Gradle tasks for deploying and running lambda's
+apply plugin: 'kotlin'
+
+repositories {
+    jcenter()
+    mavenCentral()
+}
+
+dependencies {
+    implementation "org.jetbrains.kotlin:kotlin-stdlib-jdk8:$kotlin_version"
+    // AWS API
+    implementation 'com.amazonaws:aws-lambda-java-core:1.2.0'
+    implementation 'com.amazonaws:aws-lambda-java-events:2.2.7'
+    implementation 'com.amazonaws:aws-java-sdk-s3:1.11.308'
+    // https://mvnrepository.com/artifact/com.amazonaws/aws-java-sdk-dynamodb
+    compile group: 'com.amazonaws', name: 'aws-java-sdk-dynamodb', version: '1.11.613'
+    compile 'com.amazonaws:aws-lambda-java-log4j2:1.1.0'
+    // JSON parser for Kotlin
+    implementation 'com.beust:klaxon:3.0.1'
+    compile fileTree(dir: 'jars', include: '*.jar')
+}
+
+compileKotlin {
+    kotlinOptions.jvmTarget = "1.8"
+}
+
+compileKotlin {
+    kotlinOptions.jvmTarget = "1.8"
+}
+compileTestKotlin {
+    kotlinOptions.jvmTarget = "1.8"
+}
+
+task buildZip(type: Zip) {
+    from compileJava
+    from processResources
+    into('lib') {
+        from configurations.runtimeClasspath
+    }
+}
+
+jar {
+    manifest {
+        attributes "Main-Class": "EventHandler"
+    }
+
+    from {
+        configurations.compile.collect { it.isDirectory() ? it : zipTree(it) }
+    }
+}
+
+build.dependsOn buildZip
